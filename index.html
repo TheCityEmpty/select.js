@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <script src="select.js"></script>
+</head>
+
+<body>
+  <div style="width: 100vw;height: 100vh;    margin: 50px;">
+    <div id="__Query__"></div>
+
+    <button onclick="aaa()">aaa</button>
+</div>
+  <script>
+      var arr = []
+    for (let i = 888; i< 10000 ;i++) {
+        arr.push({
+            id: i,
+            text: `头条${i}号`,
+            coed: 'SCOSD' + i,
+            __disabled__: i % 2 === 0
+        })
+    }
+    var __Q__ = new __Query__({
+        id: '__Query__',
+        data: arr,
+        slice: 5,
+        placeHolder: '请选择或输入搜索',
+        queryKey: 'id',
+        maxTagCount: 3,
+        type: 'multiple',
+        maxTagPlaceholder (num) {
+            return `more ${num}`
+        }
+    })
+
+    function aaa () {
+        console.log(__Q__.$getVallabel())
+    }
+    console.log(__Q__)
+
+    __Q__.$setVal([1, 889])
+  </script>
+</body>
+</html>
