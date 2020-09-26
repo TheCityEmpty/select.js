@@ -6,7 +6,8 @@ function __Query__ ({
   queryKey,
   type = 'single',
   maxTagCount = 0,
-  maxTagPlaceholder = undefined
+  maxTagPlaceholder = undefined,
+  clear = false
 }) {
   this.__Data__ = data
   this.__ShowData__ = []
@@ -21,6 +22,8 @@ function __Query__ ({
   this.__Type__ = type
   this.__QueryResult__ = false
   this.__MaxTagCount__ = Number(maxTagCount)
+  this.__Disabled__ = false
+  this.__Clear__ = clear
   if (this.__Type__ === 'single') {
       this.__Val__ = ''
       this.__ValLabel__ = ''
@@ -46,7 +49,7 @@ __Query__.prototype.renderDom = function () {
       <div class="__Q__select">
           <div class="__Q__multiple__item__box"></div>
           <input class="__Q__input" type="text" placeHolder="${this.__PlaceHolder__}"></input>
-          <i class="__Q__close_tag __Q__delet_all" title="删除全部">x</i>
+          <i class="__Q__tag"></i>
       </div>
       <div class="__Q__Box"></div>
   `
@@ -66,8 +69,8 @@ __Query__.prototype.getDomObj = function () {
   // __Q__Box
   this.__Box__ = document.querySelector('.__Q__Box')
 
-  // __Q__close_tag
-  this.__Close_Tag_All = document.querySelector('.__Q__close_tag')
+  // __Q__tag_arrow
+  this.__tag_arrow = document.querySelector('.__Q__tag')
 }
 
 __Query__.prototype.clickInput = function () {
@@ -85,8 +88,8 @@ __Query__.prototype.fnHandle = function () {
   this.__Box__.addEventListener('click', function (e) {
       e = e || window.event
       var target = e.target|| e.srcElement
-      if (target.className.indexOf('__Q__Item') !== -1) {
-          that.handleChange(e.target.dataset[that.__QueryKey__])
+      if (that.hasClassName(target, '__Q__Item')) {
+          that.handleChange(e.target.dataset[that.__QueryKey__], e.target)
       }
   })
 
@@ -95,14 +98,14 @@ __Query__.prototype.fnHandle = function () {
   }, 0))
 
 
-  this.__Close_Tag_All.addEventListener('click', this.debounce(function (e) {
-      that.deletAllItem(e)
+  this.__tag_arrow.addEventListener('click', this.debounce(function (e) {
+      that.clear(e)
   }, 0))
 
   document.body.addEventListener('click', function(e) {
       e = e || window.event
       var target = e.target|| e.srcElement
-      if (target.className.indexOf('__Q__input') === -1 && target.className.indexOf('__Q__Item') === -1) {
+      if (!that.hasClassName(target, '__Q__input') && !that.hasClassName(target, '__Q__Item')) {
           that.closeBox()
       }
   })
@@ -151,12 +154,16 @@ __Query__.prototype.handleKeydown = function (e) {
       if (key === 'Enter') {
           if (this.__FoucsIndex__ === -1) return this.closeBox()
           var item = this.__ShowData__[this.__FoucsIndex__]
-
-          this.handleChange(item[this.__QueryKey__])
+          
+          var lis = document.getElementsByClassName('__Q__Item')
+          this.handleChange(item[this.__QueryKey__], lis[this.__FoucsIndex__])
       }
 
   } else {
-
+      // enter
+    if (key === 'Enter') {
+        this.openBox()
+    }
   }
 
   
@@ -164,36 +171,69 @@ __Query__.prototype.handleKeydown = function (e) {
 
 
 __Query__.prototype.navItem = function () {
+  var that = this
   var items = document.getElementsByClassName('__Q__Item')
   Array.prototype.forEach.call(items, function (item) {
-      item.className = item.className.replace(' __Q_Item_Foucs', '')
+    that.removeClassName(item, ' __Q_Item_Foucs')
   })
-  items[this.__FoucsIndex__].className += ' __Q_Item_Foucs'
+  this.addClassName(items[this.__FoucsIndex__], '__Q_Item_Foucs')
 }
 
 
-__Query__.prototype.deletAllItem = function (e) {
-  this.__Val__ = []
-  this.__ValLabel__ = []
-  this.renderMultipleItem()
+__Query__.prototype.clear = function (e) {
+  if (this.hasClassName(e.target, '__Q__clear')) {
+    if (this.__Type__ === 'single') {
+        this.__Val__ = ''
+        this.__ValLabel__ = ''
+        this.renderItemLi()
+    } else {
+        this.__Val__ = []
+        this.__ValLabel__ = []
+        this.renderMultipleItem()
+    }
+    
+    this.__Input__.value = ''
+    this.showAndHideClear()
+  }
 }
+
+
+__Query__.prototype.showAndHideClear = function () {
+    if (this.__Type__ === 'single' && this.__Val__) {
+        this.addClassName(this.__tag_arrow, '__Q__clear')
+    } else if (this.__Type__ === 'multiple' && this.__Val__.length) {
+        this.addClassName(this.__tag_arrow, '__Q__clear')
+    } else {
+        this.removeClassName(this.__tag_arrow, '__Q__clear')
+    }
+  }
 
 __Query__.prototype.resetQItemClassName = function (e) {
+  var that = this
   var items = document.getElementsByClassName('__Q__Item')
   Array.prototype.forEach.call(items, function (item) {
-      item.className = '__Q__Item'
+    that.removeClassName(item, ' __Q__Changeing')
   })
 }
 
-__Query__.prototype.handleChange = function (val) {
+__Query__.prototype.handleChange = function (val, el) {
+  // 禁用
+  var findVal = this.__Data__.find(i => String(i[this.__QueryKey__]) === String(val))
+  console.log(findVal)
+  if (findVal && findVal.__disabled__) {
+      return
+  }
   // 单选
   if (this.__Type__ === 'single') {
       this.__Val__ = val
-      this.resetQItemClassName()
-      e.target.className += ' __Q__Changeing'
       this.__Input__.value = val
+
+      this.resetQItemClassName()
+      if (el) this.addClassName(el, '__Q__Changeing')
+      
       this.closeBox()
       this.handleValLabel(val)
+      this.renderItemLi()
   } else {
       //多选
       var index = this.__Val__.findIndex(i => String(i) === String(val))
@@ -207,6 +247,9 @@ __Query__.prototype.handleChange = function (val) {
 
       this.renderMultipleItem()
   }
+
+  
+  this.showAndHideClear()
 }
 
 __Query__.prototype.handleValLabel = function (val, type = 'add', index) {
@@ -241,7 +284,7 @@ __Query__.prototype.renderMultipleItem = function () {
       }
       chaildrens += `<span class="__Q__multiple__item" data-${this.__QueryKey__}="${item}">
           ${item}
-          <i class="__Q__close_tag" title="删除选项" data-${this.__QueryKey__}="${item}">x</i>
+          <i class="__Q__tag __Q__close_tag" data-${this.__QueryKey__}="${item}"></i>
       </span>`
   })
 
@@ -250,11 +293,6 @@ __Query__.prototype.renderMultipleItem = function () {
 
   this.renderItemLi()
   this.setBoxPosition()
-  if (this.__Val__.length) {
-      this.__Close_Tag_All.style.display = 'block'
-  } else {
-      this.__Close_Tag_All.style.display = 'none'
-  }
 }
 
 __Query__.prototype.renderItemLi = function () {
@@ -263,25 +301,30 @@ __Query__.prototype.renderItemLi = function () {
   if (this.__Type__ === 'single') {
       __Val = [__Val]
   }
-  var li = document.getElementsByClassName('__Q__Item')
-  Array.prototype.forEach.call(li, function (item) {
+  var lis = document.getElementsByClassName('__Q__Item')
+  Array.prototype.forEach.call(lis, function (item, liIndex) {
       var val = item.dataset[that.__QueryKey__]
       var index = __Val.findIndex(i => String(i) === String(val))
       if (index !== -1) {
-          if (item.className.indexOf('__Q__Changeing') === -1) {
-              item.className += ' __Q__Changeing'
+          if (!that.hasClassName(item, '__Q__Changeing')) {
+            that.addClassName(item, '__Q__Changeing')
           }
       } else {
-          item.className = '__Q__Item'
+          that.removeClassName(item, ' __Q__Changeing')
       }
-  })  
+
+      var __disabled__ = that.__ShowData__[liIndex].__disabled__
+      __disabled__ ? that.addClassName(item, '__Q__Disabled') : ''
+
+  })
+
 }
 
 __Query__.prototype.deleteMultipleItem = function (e) {
   e.stopPropagation()
   e = e || window.event
   var target = e.target|| e.srcElement
-  if (target.className.indexOf('__Q__close_tag') !== -1) {
+  if (this.hasClassName(target, '__Q__close_tag')) {
       var val = target.dataset[this.__QueryKey__]
       var index = this.__Val__.findIndex(i => String(i) === String(val))
       this.__Val__.splice(index, 1)
@@ -293,6 +336,7 @@ __Query__.prototype.deleteMultipleItem = function (e) {
 __Query__.prototype.closeBox = function () {
   this.__Open__ = false
   this.__Box__.style.display = 'none'
+  this.removeClassName(this.__tag_arrow, ' __Q__tag_arrow')
 
   
   if (!this.__QueryResult__) {
@@ -305,6 +349,7 @@ __Query__.prototype.closeBox = function () {
 __Query__.prototype.openBox = function () {
   this.__Open__ = true
   this.__Box__.style.display = 'block'
+  this.addClassName(this.__tag_arrow, '__Q__tag_arrow')
 }
 
 __Query__.prototype.creatCssStyle = function () {
@@ -356,25 +401,33 @@ __Query__.prototype.creatCssStyle = function () {
           padding: 5px 0;
           background: #fff;
       }
-      .__Q__Item {
+      .__Q__Item, .__Q__Item_nodata {
           padding: 7px 16px;
+          padding-left: 40px;
           color: #515a6e;
           font-size: 14px;
           cursor: pointer;
           white-space: nowrap;
+          user-select: none;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+          overflow: hidden;
+          word-break: break-all;
+      }
+      .__Q__Item_nodata {
+        color: #c5c8ce;
       }
       .__Q__Item:hover, .__Q_Item_Foucs {
          background: #f3f3f3; 
       }
       .__Q__Changeing {
-          // background: #f3f3f3; 
           color: #2d8cf0;
           position: relative;
       }
       .__Q__Changeing::after{
           content: '';
           position: absolute;
-          right: 26px;
+          left: 5px;
           top: 50%;
           margin-top: -12px;
           width: 24px;
@@ -396,24 +449,61 @@ __Query__.prototype.creatCssStyle = function () {
           vertical-align: middle;
           position: relative;
       }
-      .__Q__close_tag {
-          position: absolute;
-          font-style: normal;
-          cursor: pointer;
-          transition: all 0.3s;
-          right: 5px;
-          height: 16px;
-          bottom: 5px;
-      }
-      .__Q__close_tag:hover {
-          transform: scale(1.2);
-          color: #2d8cf0;
-      }
       .__Q__multiple__item__box {
           display: inline-block;
       }
       .__Q__delet_all {
           display: none;
+      }
+      .__Q__Disabled {
+        color: #c5c8ce;
+        cursor: not-allowed;
+      }
+      .__Q__Disabled:hover {
+        background: transparent; 
+      }
+
+      .__Q__select_disabled {
+        background-color: #f3f3f3;
+        cursor: not-allowed;
+        user-select: none;
+      }
+
+      .__Q__select_disabled .__Q__input {
+        color: #ccc;  
+        cursor: not-allowed;  
+        user-select: none;
+      }
+
+      .__Q__tag {
+        width: 12px;
+        height: 12px;
+        display: block;
+        background-size: auto 100%;
+        position: absolute;
+        font-style: normal;
+        cursor: pointer;
+        transition: all 0.3s;
+        right: 5px;
+        top: 50%;
+        margin-top: -6px;
+        transform: rotate(0deg);
+        background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAACrUlEQVRYR+2UPWgUURSFz31rErBQBIWAhahYGC0ExUJMoYgWghOCCYJYKIrZmY2FQsjMJjtvk/3RqI3ZmUQwVqKwirhCCsFgIVoIgoXGQhQsFCGCYiEkcefK/Bhi3OxfEmKx08wU757zvTP3XsIyP7TM/qgB1BL4vxKIp+02U1fvLuVkzPWYSUCmh/aDnTGAFGmoD5cCQqbsIwDnBMTemBF+5np4ADI13ESUzzJjGwGTEEIxu8OPFhMifnHoEBwnx0ADEd4wh9ql0TE+k4CZGNxFRFkQbQTww2G09EW1J4sBEUta+wThAYBVAD7kidr7dfXlTAJ/THpT15pDCGUBNILxFQxF9mjPFwIhE9YeEHIgrAXhs2CnPWZ0evH/A+D9jrR1kBlZAlYD+CSIlFhAWylIX9re6TDnAKwH8J2Yj5rRyNhsnYJjGE9kFBbIAlTvRgYWioyGX1cCIJND20GOa74J4CkSotXsVkfnasy7B2QycwxEd7yYCG9FKKT0dnW8Kweif2B4i5PP55ixNTjfJg3tXqHaoosolho8KSBuBoWvph1uSfZEPhaDiCYyG+oEuQ23wzvHdEJG1Vvz1ZTchPFUJswg2xfjF1xHSrxL+1JI0BywGmmacyDa7XcYn5F65EYx4JIA/p6wzwN8NRB62kCk6Lr6bbZwOm2vmfQbrjlo706pa5lSv6wsAFfETNkGgZOB4GNMrVCkPPvTA5TXV6L+l2t+wO8Z7jL1yOVS5gXHsFiRTNn9APcENxxt2rxOcb/H30/kwDgcNKw0dS1ejnnFAN5tk9YVEC4EBveDd6sPRZekrnaXa14VQNATGYC1v414UBqRc5WYVw3gQaStETBOBYYj0tBOV2q+IAA/Ceu2O2vSUI9XY75ggGpNZ9eVPYaLYVZIowZQS6CWwG/bi94hnUoP1AAAAABJRU5ErkJggg==);
+      }
+
+      .__Q__tag_arrow {
+        transform: rotate(180deg);
+      }
+
+      .__Q__clear:hover {
+        width: 14px;
+        height: 14px;
+        background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAACaUlEQVRYR82Xv2sUURDHv/M2YGPq/AFaaZkQ8URBJNooxMbWKtHsKShocc+Ym4txr1BQ0NtorGxtFLTRIILiiZKUsdI/IHVshOwb2b2s3G72x8sZ2Wy782Y+82bevO8jVPxRxfGxI4B5zz9uJDgFpSZIaEQgI2ECBFoXknUYs6zIeT+n3U+2iVkBNNv+NESmCRi1cSzAKoiWWg13qcy+EIA9f1Igs7aB08FCEAItsHZf5YHkArDnXwPkQVkGdv/pOmv3YZZtJgB7i2cB89rOua2VOsd65k3aehsALyyOQ5mvtm53ZGfUEZ6d+da/ZhtA0+usDFrzMpiwJ1q6PpYLEHY7iTwtc/Qv/4XoUv/pSOzA/8w+hk7vwl8AbndOQ/C2MLvAnFRDzoZAnovgcGIrCWsEumg2g2E46kOhH8IZbtTf9YbY1sde5x6AG0ULFdHYXMNdZe/JIaLgRQxBhDUR5wLry9/n2/6oEVkpKdN91vWbSYB25zMEtaKF/YFiiNA+Dp4Gy/VF6HKjfiwB0PL8HwI5UNZgaYjQPszcOnjv7vjZ1O7BdAk2AOwvA4gW9W15BJAqiYWPX6zrw3sLoPoSVN2EfPcRg1SzqH4BpHZHX/lSdAxve4+POqBuYR+IafGtq5zogUjtQD6WDaLAod9DRM+yBtGmyJQTyL6yQaRAJ2LVtHdGcZh55ZdRBFHlddwbKv4kIC8thskAJnQ+rQ9zJNlu6sGYM1sXFojS3dSF2XowcQyz9jPUh6KMP6hEi2S5UW5aByZ0hE0hK3uYpOG2VNMECLXMp5mgC8JyrHZskrN6mtk4GtSmcoA/gExqMAtj5nMAAAAASUVORK5CYII=);
+      }
+
+      .__Q__close_tag {
+        right: 2px;
+        background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAACaUlEQVRYR82Xv2sUURDHv/M2YGPq/AFaaZkQ8URBJNooxMbWKtHsKShocc+Ym4txr1BQ0NtorGxtFLTRIILiiZKUsdI/IHVshOwb2b2s3G72x8sZ2Wy782Y+82bevO8jVPxRxfGxI4B5zz9uJDgFpSZIaEQgI2ECBFoXknUYs6zIeT+n3U+2iVkBNNv+NESmCRi1cSzAKoiWWg13qcy+EIA9f1Igs7aB08FCEAItsHZf5YHkArDnXwPkQVkGdv/pOmv3YZZtJgB7i2cB89rOua2VOsd65k3aehsALyyOQ5mvtm53ZGfUEZ6d+da/ZhtA0+usDFrzMpiwJ1q6PpYLEHY7iTwtc/Qv/4XoUv/pSOzA/8w+hk7vwl8AbndOQ/C2MLvAnFRDzoZAnovgcGIrCWsEumg2g2E46kOhH8IZbtTf9YbY1sde5x6AG0ULFdHYXMNdZe/JIaLgRQxBhDUR5wLry9/n2/6oEVkpKdN91vWbSYB25zMEtaKF/YFiiNA+Dp4Gy/VF6HKjfiwB0PL8HwI5UNZgaYjQPszcOnjv7vjZ1O7BdAk2AOwvA4gW9W15BJAqiYWPX6zrw3sLoPoSVN2EfPcRg1SzqH4BpHZHX/lSdAxve4+POqBuYR+IafGtq5zogUjtQD6WDaLAod9DRM+yBtGmyJQTyL6yQaRAJ2LVtHdGcZh55ZdRBFHlddwbKv4kIC8thskAJnQ+rQ9zJNlu6sGYM1sXFojS3dSF2XowcQyz9jPUh6KMP6hEi2S5UW5aByZ0hE0hK3uYpOG2VNMECLXMp5mgC8JyrHZskrN6mtk4GtSmcoA/gExqMAtj5nMAAAAASUVORK5CYII=);
       }
 
   `
@@ -435,13 +525,13 @@ __Query__.prototype.query = function (q = '', isFirst = false) {
 __Query__.prototype.renderItem = function () {
   var childrens = ''
   this.__ShowData__.forEach(i => {
-      childrens += `<div class="__Q__Item${i.__disabled__ ? ' __Q__Disabled' : ''}" data-${this.__QueryKey__}="${i[this.__QueryKey__]}">
+      childrens += `<div class="__Q__Item" title="${i.text }" data-${this.__QueryKey__}="${i[this.__QueryKey__]}">
           ${i.text }
       </div>`
   })
 
   if (!this.__ShowData__.length) {
-      childrens = '<div class="__Q__Item">未搜索到数据</div>'
+      childrens = '<div class="__Q__Item_nodata">未搜索到数据</div>'
       this.__QueryResult__ = false
   } else {
       this.__QueryResult__ = true
@@ -467,11 +557,11 @@ __Query__.prototype.setBoxPosition = function () {
 
 __Query__.prototype.$setVal = function (val) {
   if (this.__Type__ === 'single' && Boolean(val.push) !== true) {
-      var fArr = this.__Data__.filter(i => String(i[this.__QueryKey__]) === val)
+      var fArr = this.__Data__.filter(i => String(i[this.__QueryKey__]) === String(val))
       if (fArr.length) this.handleChange(val)
 
   } else if (this.__Type__ === 'multiple' && Boolean(val.push) === true){
-      var fArr = this.__Data__.filter(i => val.find(v => i[this.__QueryKey__] === v))
+      var fArr = this.__Data__.filter(i => val.find(v => String(i[this.__QueryKey__]) === String(v)))
       fArr.forEach(i => { this.handleChange(i[this.__QueryKey__]) })
 
   } else {
@@ -493,7 +583,7 @@ __Query__.prototype.addClassName = function (el, classname) {
     if (elClassname.indexOf(classname) !== -1) {
         el.className = elClassname.replace(classname, classname)
     } else {
-        el.className += classname
+        el.className += ' ' + classname
     }
 }
 
@@ -511,6 +601,13 @@ __Query__.prototype.hasClassName = function (el, classname) {
     if (elClassname.indexOf(classname) !== -1) {
         return true
     }
+}
+
+__Query__.prototype.$setDisabled = function (flag) {
+    this.__Disabled__ = flag
+    this.__Input__.disabled = flag
+    var select = document.querySelector('.__Q__select')
+    flag ? this.addClassName(select, '__Q__select_disabled') : this.removeClassName(select, ' __Q__select_disabled')
 }
 
 

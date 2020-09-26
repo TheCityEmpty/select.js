@@ -12,6 +12,9 @@
     <div id="__Query__"></div>
 
     <button onclick="aaa()">aaa</button>
+
+    <button onclick="bbb()">不禁用</button>
+    <button onclick="ccc()">禁用</button>
 </div>
   <script>
       var arr = []
@@ -29,11 +32,12 @@
         slice: 5,
         placeHolder: '请选择或输入搜索',
         queryKey: 'id',
-        maxTagCount: 3,
+        clear: true,
+        // maxTagCount: 3,
         type: 'multiple',
-        maxTagPlaceholder (num) {
-            return `more ${num}`
-        }
+        // maxTagPlaceholder (num) {
+        //     return `more ${num}`
+        // }
     })
 
     function aaa () {
@@ -41,7 +45,16 @@
     }
     console.log(__Q__)
 
-    __Q__.$setVal([1, 889])
+    // __Q__.$setVal(889)
+
+
+    function bbb() {
+      __Q__.$setDisabled(false)
+    }
+
+    function ccc() {
+      __Q__.$setDisabled(true)
+    }
   </script>
 </body>
 </html>
