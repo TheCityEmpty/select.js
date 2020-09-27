@@ -11,6 +11,9 @@
   <div style="width: 100vw;height: 100vh;    margin: 50px;">
     <div id="__Query__"></div>
 
+
+    <div id="__Query__1" style="margin-top: 300px;"></div>
+
     <button onclick="aaa()">aaa</button>
 
     <button onclick="bbb()">不禁用</button>
@@ -39,6 +42,21 @@
         //     return `more ${num}`
         // }
     })
+
+
+    var __Q__ = new __Query__({
+        id: '__Query__1',
+        data: arr,
+        slice: 10,
+        placeHolder: '请选择或输入搜索1',
+        queryKey: 'id',
+        clear: true
+        // maxTagCount: 3,
+        // maxTagPlaceholder (num) {
+        //     return `more ${num}`
+        // }
+    })
+
 
     function aaa () {
         console.log(__Q__.$getVallabel())

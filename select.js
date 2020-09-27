@@ -24,6 +24,8 @@ function __Query__ ({
   this.__MaxTagCount__ = Number(maxTagCount)
   this.__Disabled__ = false
   this.__Clear__ = clear
+
+  this.__Key__ = new Date().getTime()
   if (this.__Type__ === 'single') {
       this.__Val__ = ''
       this.__ValLabel__ = ''
@@ -43,15 +45,19 @@ __Query__.prototype.init = function () {
   this.creatCssStyle()
 }
 
+__Query__.prototype.setKey = function () {
+  return `data-q-${this.__Key__}`
+}
+
 __Query__.prototype.renderDom = function () {
   var childrens = ''
   childrens = `
-      <div class="__Q__select">
-          <div class="__Q__multiple__item__box"></div>
-          <input class="__Q__input" type="text" placeHolder="${this.__PlaceHolder__}"></input>
-          <i class="__Q__tag"></i>
+      <div class="__Q__select" ${this.setKey()}>
+          <div class="__Q__multiple__item__box" ${this.setKey()}></div>
+          <input class="__Q__input" type="text" placeHolder="${this.__PlaceHolder__}" ${this.setKey()}></input>
+          <i class="__Q__tag" ${this.setKey()}></i>
       </div>
-      <div class="__Q__Box"></div>
+      <div class="__Q__Box" ${this.setKey()}></div>
   `
   this.__Dom__.innerHTML = childrens
 }
@@ -61,16 +67,16 @@ __Query__.prototype.getDomObj = function () {
   // 挂载在 this 上的 dom
 
   // __Q__input
-  this.__Input__ = document.querySelector('.__Q__input')
+  this.__Input__ = document.querySelector(`.__Q__input[${this.setKey()}]`)
 
   // __Q__multiple__item__box
-  this.__Multiple__Item__Box = document.querySelector('.__Q__multiple__item__box')
+  this.__Multiple__Item__Box = document.querySelector(`.__Q__multiple__item__box[${this.setKey()}]`)
 
   // __Q__Box
-  this.__Box__ = document.querySelector('.__Q__Box')
+  this.__Box__ = document.querySelector(`.__Q__Box[${this.setKey()}]`)
 
   // __Q__tag_arrow
-  this.__tag_arrow = document.querySelector('.__Q__tag')
+  this.__tag_arrow = document.querySelector(`.__Q__tag[${this.setKey()}]`)
 }
 
 __Query__.prototype.clickInput = function () {
@@ -82,12 +88,12 @@ __Query__.prototype.fnHandle = function () {
   this.__Input__.addEventListener('click', this.clickInput.bind(this, null))
   this.__Input__.addEventListener('input', this.debounce(function (e) {
       e = e || window.event
-      var target = e.target|| e.srcElement
+      var target = e.target
       that.query(target.value)
   }, this.__QueryDelay__))
   this.__Box__.addEventListener('click', function (e) {
       e = e || window.event
-      var target = e.target|| e.srcElement
+      var target = e.target
       if (that.hasClassName(target, '__Q__Item')) {
           that.handleChange(e.target.dataset[that.__QueryKey__], e.target)
       }
@@ -104,7 +110,7 @@ __Query__.prototype.fnHandle = function () {
 
   document.body.addEventListener('click', function(e) {
       e = e || window.event
-      var target = e.target|| e.srcElement
+      var target = e.target
       if (!that.hasClassName(target, '__Q__input') && !that.hasClassName(target, '__Q__Item')) {
           that.closeBox()
       }
@@ -172,7 +178,7 @@ __Query__.prototype.handleKeydown = function (e) {
 
 __Query__.prototype.navItem = function () {
   var that = this
-  var items = document.getElementsByClassName('__Q__Item')
+  var items = document.querySelectorAll(`.__Q__Item[${this.setKey()}]`)
   Array.prototype.forEach.call(items, function (item) {
     that.removeClassName(item, ' __Q_Item_Foucs')
   })
@@ -210,7 +216,7 @@ __Query__.prototype.showAndHideClear = function () {
 
 __Query__.prototype.resetQItemClassName = function (e) {
   var that = this
-  var items = document.getElementsByClassName('__Q__Item')
+  var items = document.querySelectorAll(`.__Q__Item[${this.setKey()}]`)
   Array.prototype.forEach.call(items, function (item) {
     that.removeClassName(item, ' __Q__Changeing')
   })
@@ -219,7 +225,6 @@ __Query__.prototype.resetQItemClassName = function (e) {
 __Query__.prototype.handleChange = function (val, el) {
   // 禁用
   var findVal = this.__Data__.find(i => String(i[this.__QueryKey__]) === String(val))
-  console.log(findVal)
   if (findVal && findVal.__disabled__) {
       return
   }
@@ -279,12 +284,12 @@ __Query__.prototype.renderMultipleItem = function () {
   var maxTags = ''
   this.__Val__.forEach((item, index) => {
       if (this.__MaxTagCount__ > 0 && this.__MaxTagCount__ <= index) {
-          maxTags = `<span class="__Q__multiple__item __Q__Max_Tag">${this.setMaxTagPlaceholder()}</span>`
+          maxTags = `<span class="__Q__multiple__item __Q__Max_Tag" ${this.setKey()}>${this.setMaxTagPlaceholder()}</span>`
           return 
       }
-      chaildrens += `<span class="__Q__multiple__item" data-${this.__QueryKey__}="${item}">
+      chaildrens += `<span class="__Q__multiple__item" data-${this.__QueryKey__}="${item}" ${this.setKey()}>
           ${item}
-          <i class="__Q__tag __Q__close_tag" data-${this.__QueryKey__}="${item}"></i>
+          <i class="__Q__tag __Q__close_tag" data-${this.__QueryKey__}="${item}" ${this.setKey()}></i>
       </span>`
   })
 
@@ -301,7 +306,7 @@ __Query__.prototype.renderItemLi = function () {
   if (this.__Type__ === 'single') {
       __Val = [__Val]
   }
-  var lis = document.getElementsByClassName('__Q__Item')
+  var lis = document.querySelectorAll(`.__Q__Item[${this.setKey()}]`)
   Array.prototype.forEach.call(lis, function (item, liIndex) {
       var val = item.dataset[that.__QueryKey__]
       var index = __Val.findIndex(i => String(i) === String(val))
@@ -323,7 +328,7 @@ __Query__.prototype.renderItemLi = function () {
 __Query__.prototype.deleteMultipleItem = function (e) {
   e.stopPropagation()
   e = e || window.event
-  var target = e.target|| e.srcElement
+  var target = e.target
   if (this.hasClassName(target, '__Q__close_tag')) {
       var val = target.dataset[this.__QueryKey__]
       var index = this.__Val__.findIndex(i => String(i) === String(val))
@@ -354,9 +359,8 @@ __Query__.prototype.openBox = function () {
 
 __Query__.prototype.creatCssStyle = function () {
   var styleDom = document.createElement('style')
-  styleDom.type = 'text/css'
   styleDom.innerHTML = `
-      #__Query__ {
+      #${this.__Id__} {
           position: relative;
       }
       .__Q__select {
@@ -525,7 +529,7 @@ __Query__.prototype.query = function (q = '', isFirst = false) {
 __Query__.prototype.renderItem = function () {
   var childrens = ''
   this.__ShowData__.forEach(i => {
-      childrens += `<div class="__Q__Item" title="${i.text }" data-${this.__QueryKey__}="${i[this.__QueryKey__]}">
+      childrens += `<div class="__Q__Item" title="${i.text }" data-${this.__QueryKey__}="${i[this.__QueryKey__]}" ${this.setKey()}>
           ${i.text }
       </div>`
   })
@@ -550,7 +554,7 @@ __Query__.prototype.debounce = function (fn, wait) {
 }
 
 __Query__.prototype.setBoxPosition = function () {
-  var select = document.querySelector('.__Q__select')
+  var select = document.querySelector(`.__Q__select[${this.setKey()}]`)
   var h = select.offsetHeight
   this.__Box__.style.top = h + 4 + 'px'
 }
@@ -597,8 +601,12 @@ __Query__.prototype.removeClassName = function (el, classname) {
 
 __Query__.prototype.hasClassName = function (el, classname) {
     var elClassname = el.className
+    var keys = Object.keys(el.dataset)
+    var reg = /q-\d+/
 
-    if (elClassname.indexOf(classname) !== -1) {
+
+    var k = keys.filter(i => reg.test(i))[0]
+    if (elClassname.indexOf(classname) !== -1 && `data-${k}` === this.setKey()) {
         return true
     }
 }
@@ -606,7 +614,7 @@ __Query__.prototype.hasClassName = function (el, classname) {
 __Query__.prototype.$setDisabled = function (flag) {
     this.__Disabled__ = flag
     this.__Input__.disabled = flag
-    var select = document.querySelector('.__Q__select')
+    var select = document.querySelector(`.__Q__select[${this.setKey()}]`)
     flag ? this.addClassName(select, '__Q__select_disabled') : this.removeClassName(select, ' __Q__select_disabled')
 }
 
