@@ -26,6 +26,9 @@ function __Query__ ({
   this.__Clear__ = clear
 
   this.__Key__ = new Date().getTime()
+
+  this.__ObserverInfo__ = {}
+  this.__Observer__ = undefined
   if (this.__Type__ === 'single') {
       this.__Val__ = ''
       this.__ValLabel__ = ''
@@ -43,6 +46,7 @@ __Query__.prototype.init = function () {
   this.fnHandle()
   this.query('', true)
   this.creatCssStyle()
+  this.autoScroll()
 }
 
 __Query__.prototype.setKey = function () {
@@ -122,6 +126,26 @@ __Query__.prototype.fnHandle = function () {
   }, 0))
 }
 
+__Query__.prototype.autoScroll = function (items) {
+  
+  this.__Observer__ = new IntersectionObserver((entries, index) => {
+    entries.forEach(item => {
+      this.__ObserverInfo__[item.target.dataset[this.__QueryKey__]] = item.isIntersecting
+    })
+  }, { root: this.__Box__ , rootMargin: '0px 0px -32px 0px', threshold: 1})
+}
+
+__Query__.prototype.observeDom = function (items) {
+  var items = document.querySelectorAll(`.__Q__Item[${this.setKey()}]`)
+  Array.prototype.forEach.call(items, item => {
+    this.__Observer__.observe(item)
+  })
+}
+
+__Query__.prototype.unObserveDom = function (items) {
+  this.__Observer__.disconnect()
+}
+
 __Query__.prototype.handleKeydown = function (e) {
   var key = e.key || e.coed
   var keyCode = e.keyCode || e.which
@@ -129,7 +153,7 @@ __Query__.prototype.handleKeydown = function (e) {
       return
   }
 
-  if (this.__Open__) {
+  if (this.__Open__) {  
       // Esc
       if (key === 'Escape') {
           e.stopPropagation()
@@ -161,7 +185,7 @@ __Query__.prototype.handleKeydown = function (e) {
           if (this.__FoucsIndex__ === -1) return this.closeBox()
           var item = this.__ShowData__[this.__FoucsIndex__]
           
-          var lis = document.getElementsByClassName('__Q__Item')
+          var lis = document.querySelectorAll(`.__Q__Item[${this.setKey()}]`)
           this.handleChange(item[this.__QueryKey__], lis[this.__FoucsIndex__])
       }
 
@@ -171,10 +195,7 @@ __Query__.prototype.handleKeydown = function (e) {
         this.openBox()
     }
   }
-
-  
 }
-
 
 __Query__.prototype.navItem = function () {
   var that = this
@@ -183,6 +204,11 @@ __Query__.prototype.navItem = function () {
     that.removeClassName(item, ' __Q_Item_Foucs')
   })
   this.addClassName(items[this.__FoucsIndex__], '__Q_Item_Foucs')
+
+  var foucsKey = items[this.__FoucsIndex__].dataset[this.__QueryKey__]
+  if (!this.__ObserverInfo__[foucsKey]) {
+    this.__Box__.scrollTop = items[this.__FoucsIndex__].offsetTop
+  }
 }
 
 
@@ -343,7 +369,7 @@ __Query__.prototype.closeBox = function () {
   this.__Box__.style.display = 'none'
   this.removeClassName(this.__tag_arrow, ' __Q__tag_arrow')
 
-  
+  this.unObserveDom()
   if (!this.__QueryResult__) {
       // 上次搜索失败
       this.__Input__.value = ''
@@ -355,10 +381,17 @@ __Query__.prototype.openBox = function () {
   this.__Open__ = true
   this.__Box__.style.display = 'block'
   this.addClassName(this.__tag_arrow, '__Q__tag_arrow')
+
+  this.observeDom()
 }
 
+
+
 __Query__.prototype.creatCssStyle = function () {
+  if (document.querySelector(`style[data-id=select]`)) return
+
   var styleDom = document.createElement('style')
+  styleDom.setAttribute('data-id', 'select')
   styleDom.innerHTML = `
       #${this.__Id__} {
           position: relative;
@@ -509,7 +542,6 @@ __Query__.prototype.creatCssStyle = function () {
         right: 2px;
         background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAACaUlEQVRYR82Xv2sUURDHv/M2YGPq/AFaaZkQ8URBJNooxMbWKtHsKShocc+Ym4txr1BQ0NtorGxtFLTRIILiiZKUsdI/IHVshOwb2b2s3G72x8sZ2Wy782Y+82bevO8jVPxRxfGxI4B5zz9uJDgFpSZIaEQgI2ECBFoXknUYs6zIeT+n3U+2iVkBNNv+NESmCRi1cSzAKoiWWg13qcy+EIA9f1Igs7aB08FCEAItsHZf5YHkArDnXwPkQVkGdv/pOmv3YZZtJgB7i2cB89rOua2VOsd65k3aehsALyyOQ5mvtm53ZGfUEZ6d+da/ZhtA0+usDFrzMpiwJ1q6PpYLEHY7iTwtc/Qv/4XoUv/pSOzA/8w+hk7vwl8AbndOQ/C2MLvAnFRDzoZAnovgcGIrCWsEumg2g2E46kOhH8IZbtTf9YbY1sde5x6AG0ULFdHYXMNdZe/JIaLgRQxBhDUR5wLry9/n2/6oEVkpKdN91vWbSYB25zMEtaKF/YFiiNA+Dp4Gy/VF6HKjfiwB0PL8HwI5UNZgaYjQPszcOnjv7vjZ1O7BdAk2AOwvA4gW9W15BJAqiYWPX6zrw3sLoPoSVN2EfPcRg1SzqH4BpHZHX/lSdAxve4+POqBuYR+IafGtq5zogUjtQD6WDaLAod9DRM+yBtGmyJQTyL6yQaRAJ2LVtHdGcZh55ZdRBFHlddwbKv4kIC8thskAJnQ+rQ9zJNlu6sGYM1sXFojS3dSF2XowcQyz9jPUh6KMP6hEi2S5UW5aByZ0hE0hK3uYpOG2VNMECLXMp5mgC8JyrHZskrN6mtk4GtSmcoA/gExqMAtj5nMAAAAASUVORK5CYII=);
       }
-
   `
   document.getElementsByTagName('head').item(0).appendChild(styleDom)
 }
@@ -611,7 +643,7 @@ __Query__.prototype.hasClassName = function (el, classname) {
     }
 }
 
-__Query__.prototype.$setDisabled = function (flag) {
+__Query__.prototype.$setDisabled = function (flag = false) {
     this.__Disabled__ = flag
     this.__Input__.disabled = flag
     var select = document.querySelector(`.__Q__select[${this.setKey()}]`)
