@@ -81,6 +81,8 @@ __Query__.prototype.getDomObj = function () {
 
   // __Q__tag_arrow
   this.__tag_arrow = document.querySelector(`.__Q__tag[${this.setKey()}]`)
+
+  document.querySelector(`#${this.__Id__}`).className += '__Query__Select__'
 }
 
 __Query__.prototype.clickInput = function () {
@@ -393,7 +395,7 @@ __Query__.prototype.creatCssStyle = function () {
   var styleDom = document.createElement('style')
   styleDom.setAttribute('data-id', 'select')
   styleDom.innerHTML = `
-      #${this.__Id__} {
+      .__Query__Select__ {
           position: relative;
       }
       .__Q__select {
